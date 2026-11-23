@@ -1,0 +1,16 @@
+# 模型缓存（可重新下载，不入库）
+research/fw-small/
+
+# 生成过程临时文件
+research/_16k.wav
+research/_tmp.wav
+research/__pycache__/
+
+# 内置示例素材（本地 AI 生成原创，可公开）随模板一起分发，见 ATTRIBUTION.md
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 渲染产物
+out/

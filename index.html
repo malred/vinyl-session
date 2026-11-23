@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="shiro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>雪落 · SNOW FALLS AGAIN — Vinyl Session</title>
+<meta name="description" content="Vinyl Session 黑胶放映室：带逐字歌词字幕的唱片播放动画模板（纯 HTML/CSS/JS，无构建）。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;500;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=IBM+Plex+Mono:wght@200;300;400&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e8e4da'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23060608' font-family='serif' font-weight='bold'%3E雪%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══════════════════ 背景层 ══════════════════ -->
+<div class="bg" aria-hidden="true">
+  <div class="bg__img" id="bgImg"></div>
+  <div class="bg__shade"></div>
+  <div class="bg__glow" id="bgGlow"></div>
+  <div class="bg__leak" id="bgLeak"></div>
+  <!-- 背景插画的水面倒影 -->
+  <div class="bg__water">
+    <div class="bg__water-flip">
+      <div class="bg__img" id="bgImgRefl"></div>
+    </div>
+  </div>
+  <div class="bg__vig"></div>
+</div>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ══════════════════ 舞台 ══════════════════ -->
+<main class="stage" id="stage">
+
+  <div class="scene">
+
+    <!-- 唱片 + 方盒 -->
+    <section class="deck" aria-label="黑胶唱机">
+      <div class="deck__box" id="deckBox">
+        <div class="tt" id="turntable">
+          <div class="tt__platter" id="platter">
+            <div class="tt__sleeve">
+              <img src="assets/pal-c02-white.png" alt="封面">
+              <span class="tt__sleeve-slot" aria-hidden="true"></span>
+            </div>
+            <div class="tt__disc" id="disc">
+              <div class="tt__grooves"></div>
+              <div class="tt__label">
+                <img id="labelImg" src="assets/pal-c02-white.png" alt="">
+              </div>
+            </div>
+            <div class="tt__glow" id="discGlow" aria-hidden="true"></div>
+            <div class="tt__waterlight" aria-hidden="true"></div>
+            <canvas class="tt__spectrum" id="spectrum"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 歌词（直接浮在插画上，无面板） -->
+    <section class="panel" aria-label="歌词">
+      <div class="lyrics" id="lyrics">
+        <div class="lyrics__viewport">
+          <div class="lyrics__track" id="lyTrack">
+            <div class="lyrics__line lyrics__line--prev"></div>
+            <div class="lyrics__line lyrics__line--cur"></div>
+            <div class="lyrics__line lyrics__line--next"></div>
+          </div>
+          <div class="lyrics__interlude" id="lyBreak" aria-hidden="true">
+            <span class="lyrics__interlude-cn">間奏</span>
+            <span class="lyrics__interlude-en">INTERLUDE</span>
+            <span class="lyrics__bars"><i></i><i></i><i></i></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 角落小标题（像 MV 字幕，不是 UI） -->
+  <div class="title-card">
+    <div class="title-card__cn" id="titleCn">雪落</div>
+    <div class="title-card__en" id="titleEn">SNOW FALLS AGAIN</div>
+    <div class="title-card__artist" id="titleArtist">NOCTCODE</div>
+  </div>
+
+  <!-- 无 UI 感：控件自动隐藏，只在动鼠标 / 暂停时出现 -->
+  <div class="chrome" id="chrome">
+    <div class="chrome__track" id="track" role="slider" tabindex="0" aria-label="播放进度"
+         aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="chrome__fill" id="progFill"></div>
+      <div class="chrome__head" id="progHead"></div>
+    </div>
+    <div class="chrome__row">
+      <span class="chrome__time" id="tCur">00:00.0</span>
+      <div class="chrome__controls">
+        <button class="ctl" id="btnPrev" type="button" aria-label="上一首" title="上一首（[）">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+        </button>
+        <button class="ctl" id="btnPlay" type="button" aria-label="播放 / 暂停" title="播放 / 暂停（空格）">
+          <svg class="ico ico--play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+          <svg class="ico ico--pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg>
+        </button>
+        <button class="ctl" id="btnRestart" type="button" aria-label="重新播放" title="重新播放">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
+        <button class="ctl" id="btnNext" type="button" aria-label="下一首" title="下一首（]）">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
+        </button>
+        <button class="ctl ctl--txt" id="btnSkin" type="button" title="切换封面主题">墨</button>
+      </div>
+      <span class="chrome__time" id="tTot">03:33</span>
+    </div>
+  </div>
+</main>
+
+<!-- ══════════════════ 结尾致谢 ══════════════════ -->
+<div class="outro" id="outro" aria-hidden="true">
+  <div class="outro__inner">
+    <div class="outro__kicker">THANK YOU FOR LISTENING</div>
+    <div class="outro__title" id="outroTitle">雪落</div>
+    <div class="outro__en" id="outroEn">SNOW FALLS AGAIN</div>
+    <div class="outro__rule"></div>
+    <div class="outro__meta" id="outroMeta">NOCTCODE<span class="outro__dot">·</span>0094</div>
+    <button class="outro__btn" id="btnAgain" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+      <span>再听一次</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════ 进场 ══════════════════ -->
+<div class="intro" id="intro">
+  <div class="intro__inner">
+    <div class="intro__kicker"><span class="intro__kicker-line"></span><span id="introKicker">VINYL SESSION · 0094</span><span class="intro__kicker-line"></span></div>
+    <h1 class="intro__title" id="introTitle"></h1>
+    <div class="intro__en" id="introEn">SNOW FALLS AGAIN</div>
+    <div class="intro__rule"></div>
+    <div class="intro__artist" id="introArtist">NOCTCODE</div>
+    <button class="intro__btn" id="btnStart" type="button" aria-label="开始播放">
+      <span class="intro__btn-ring"></span>
+      <span class="intro__btn-ring intro__btn-ring--2"></span>
+      <span class="intro__btn-tri"></span>
+    </button>
+    <div class="intro__hint">点 击 播 放</div>
+  </div>
+  <div class="intro__foot"><span>建议佩戴耳机</span><span class="intro__foot-dot">·</span><span>33⅓ RPM</span></div>
+</div>
+
+<!-- 直开模式（file://）提示 -->
+<div class="notice" id="notice" hidden>
+  <div class="notice__text">
+    <strong>直开模式</strong>：浏览器安全策略屏蔽了声谱分析，声音不受影响，可视化为模拟驱动。
+    <span class="notice__sub">运行 <code>python serve.py</code> 可获得完整实时频谱。</span>
+  </div>
+  <div class="notice__actions">
+    <button class="notice__btn" id="btnEnableFx" type="button">开启完整可视化</button>
+    <button class="notice__close" id="btnNoticeClose" type="button" aria-label="关闭">×</button>
+  </div>
+</div>
+<input type="file" id="filePick" accept="audio/*" hidden>
+
+<div class="fallback" id="fallback" hidden>
+  <p>音频加载失败，请确认 <code>assets/</code> 下 config.js 指向的音轨存在。</p>
+</div>
+
+<!-- ══════════════════ 调试面板（仅交互模式；` 键开关，Esc 关闭；渲染模式不出现） ══════════════════ -->
+<div class="debug" id="debugPanel" hidden>
+  <div class="debug__hd">
+    <span class="debug__title">调试面板</span>
+    <span class="debug__key">`</span>
+    <button class="debug__close" id="dbgClose" type="button" aria-label="关闭调试面板">×</button>
+  </div>
+  <div class="debug__body">
+    <label class="debug__row">
+      <span class="debug__lab">背景亮度</span>
+      <input type="range" id="dbgBgB" min="0" max="160" step="1" value="62">
+      <output class="debug__val" id="dbgBgBV">0.62</output>
+    </label>
+    <label class="debug__row">
+      <span class="debug__lab">暗角</span>
+      <input type="range" id="dbgVig" min="0" max="100" step="1" value="100">
+      <output class="debug__val" id="dbgVigV">1.00</output>
+    </label>
+    <label class="debug__row">
+      <span class="debug__lab">粒子数量</span>
+      <input type="range" id="dbgPtN" min="0" max="300" step="5" value="100">
+      <output class="debug__val" id="dbgPtNV">×1.00</output>
+    </label>
+    <label class="debug__row">
+      <span class="debug__lab">粒子尺寸</span>
+      <input type="range" id="dbgPtS" min="20" max="300" step="5" value="100">
+      <output class="debug__val" id="dbgPtSV">×1.00</output>
+    </label>
+    <label class="debug__row">
+      <span class="debug__lab">粒子速度</span>
+      <input type="range" id="dbgPtV" min="0" max="300" step="5" value="100">
+      <output class="debug__val" id="dbgPtVV">×1.00</output>
+    </label>
+    <label class="debug__row">
+      <span class="debug__lab">粒子形态</span>
+      <select id="dbgPtShape">
+        <option value="auto" selected>默认（按类型）</option>
+        <option value="dot">圆点</option>
+        <option value="streak">光痕</option>
+        <option value="star">星芒</option>
+      </select>
+    </label>
+  </div>
+  <div class="debug__ft">
+    <span id="dbgStat">—</span>
+    <button class="debug__reset" id="dbgReset" type="button">重置</button>
+  </div>
+</div>
+
+<noscript><div class="fallback" style="display:block"><p>需要启用 JavaScript 才能播放。</p></div></noscript>
+
+<audio id="audio" src="assets/kimono-sad.mp3" preload="auto"></audio>
+<script src="js/lib/web-kit.js"></script>
+<script src="config.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
